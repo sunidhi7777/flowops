@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: flowops-postgres
+    environment:
+      POSTGRES_DB: flowops
+      POSTGRES_USER: flowops
+      POSTGRES_PASSWORD: flowops
+    ports:
+      - "5433:5432"
+    volumes:
+      - flowops-postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  flowops-postgres-data:
