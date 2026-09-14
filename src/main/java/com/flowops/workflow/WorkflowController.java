@@ -1,10 +1,12 @@
 package com.flowops.workflow;
 
-import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
+import com.flowops.idempotency.IdempotencyService;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
+
 import java.util.List;
 import java.util.UUID;
 
@@ -14,11 +16,14 @@ public class WorkflowController {
 
     private final WorkflowRepository workflowRepository;
     private final WorkflowRunRepository workflowRunRepository;
+    private final IdempotencyService idempotencyService;
 
     public WorkflowController(WorkflowRepository workflowRepository,
-                              WorkflowRunRepository workflowRunRepository) {
+                              WorkflowRunRepository workflowRunRepository,
+                              IdempotencyService idempotencyService) {
         this.workflowRepository = workflowRepository;
         this.workflowRunRepository = workflowRunRepository;
+        this.idempotencyService = idempotencyService;
     }
 
     @PostMapping
@@ -35,12 +40,17 @@ public class WorkflowController {
 
     @PostMapping("/{workflowId}/runs")
     public ResponseEntity<WorkflowRun> triggerRun(@PathVariable UUID workflowId,
-                                                  @RequestParam UUID tenantId) {
+                                                  @RequestParam UUID tenantId,
+                                                  @RequestHeader("Idempotency-Key") String idempotencyKey) {
         Workflow workflow = workflowRepository.findById(workflowId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Workflow not found"));
 
         if (!workflow.getTenantId().equals(tenantId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Workflow not found");
+        }
+
+        if (!idempotencyService.isFirstUse(idempotencyKey)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Duplicate request: this idempotency key was already used");
         }
 
         WorkflowRun run = new WorkflowRun(workflowId, tenantId);
