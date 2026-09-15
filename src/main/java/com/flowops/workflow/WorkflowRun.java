@@ -63,4 +63,14 @@ public class WorkflowRun {
     public OffsetDateTime getCompletedAt() { return completedAt; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public OffsetDateTime getUpdatedAt() { return updatedAt; }
+
+    public void markRunning() {
+        this.status = WorkflowRunStatus.RUNNING;
+        this.startedAt = OffsetDateTime.now();
+    }
+
+    public void markCompleted() {
+        this.status = WorkflowRunStatus.COMPLETED;
+        this.completedAt = OffsetDateTime.now();
+    }
 }

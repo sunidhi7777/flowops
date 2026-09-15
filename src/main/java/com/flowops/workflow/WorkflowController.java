@@ -4,6 +4,7 @@ import com.flowops.idempotency.IdempotencyService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -17,13 +18,16 @@ public class WorkflowController {
     private final WorkflowRepository workflowRepository;
     private final WorkflowRunRepository workflowRunRepository;
     private final IdempotencyService idempotencyService;
+    private final KafkaTemplate<String, String> kafkaTemplate;
 
     public WorkflowController(WorkflowRepository workflowRepository,
                               WorkflowRunRepository workflowRunRepository,
-                              IdempotencyService idempotencyService) {
+                              IdempotencyService idempotencyService,
+                              KafkaTemplate<String, String> kafkaTemplate) {
         this.workflowRepository = workflowRepository;
         this.workflowRunRepository = workflowRunRepository;
         this.idempotencyService = idempotencyService;
+        this.kafkaTemplate = kafkaTemplate;
     }
 
     @PostMapping
@@ -55,6 +59,9 @@ public class WorkflowController {
 
         WorkflowRun run = new WorkflowRun(workflowId, tenantId);
         WorkflowRun saved = workflowRunRepository.save(run);
+
+        kafkaTemplate.send("workflow-run-triggered", saved.getId().toString());
+
         return ResponseEntity.ok(saved);
     }
 
